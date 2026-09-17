@@ -77,3 +77,26 @@ class UnknownExecutionStateError(DomainError):
     """
 
     code = "UNKNOWN_EXECUTION_STATE"
+
+
+class AmbiguousTenantContextError(DomainError):
+    """
+    Raised when an authenticated identity has more than one currently
+    valid membership and no explicit tenant/organization selection was
+    provided.
+
+    Document 3 Section 12 (TENANT RESOLUTION): "Si plusieurs contextes
+    sont possibles: AMBIGUOUS -> ASK USER. Ne jamais choisir
+    arbitrairement." This error carries the candidate memberships so the
+    interface layer can present a selection prompt — it must never be
+    caught and resolved by picking the first/any candidate.
+    """
+
+    code = "AMBIGUOUS_TENANT_CONTEXT"
+
+
+class NoValidMembershipError(AuthorizationError):
+    """Raised when an authenticated identity has no currently valid
+    membership at all — distinct from ambiguity (zero vs. multiple)."""
+
+    code = "NO_VALID_MEMBERSHIP"

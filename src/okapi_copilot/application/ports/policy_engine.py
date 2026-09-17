@@ -27,6 +27,16 @@ class AuthorizationDecision:
 
 
 class PolicyEngine(Protocol):
+    async def current_policy_version(self) -> str:
+        """
+        Return the policy version currently in force.
+
+        Used to stamp newly-issued SecurityContexts (Document 9/10) so a
+        later policy change can be detected and force re-issuance rather
+        than silently operating under stale rules.
+        """
+        ...
+
     async def authorize(
         self,
         *,

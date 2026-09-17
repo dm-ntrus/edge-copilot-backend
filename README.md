@@ -7,10 +7,24 @@ organized and how to run it.
 
 ## Status
 
-Architecture skeleton only. No business features are implemented yet.
-See `docs/` (to be added) or the project's audit trail for the current
-capability matrix (IMPLEMENTED / PARTIALLY_IMPLEMENTED / MISSING /
-BROKEN / UNVERIFIED per Document 11).
+Phase 0 (architecture skeleton) complete. Phase 1 (Secure Intelligent
+Runtime, Document 3) in progress — security foundation slice landed:
+
+| Capability | Status | Evidence |
+|---|---|---|
+| DDD/hexagonal skeleton | IMPLEMENTED | `src/okapi_copilot/`, CI purity guard (local; not yet pushed, see below) |
+| `SecurityContext` value object | IMPLEMENTED | `domain/security/security_context.py`, `tests/unit/domain/test_security_context.py` |
+| Identity domain (`User`, `ChannelIdentity`, `MembershipReference`) | IMPLEMENTED | `domain/identity/`, `tests/unit/domain/identity/` |
+| Keycloak token verification (signature/issuer/audience/expiry) | IMPLEMENTED | `infrastructure/identity/keycloak_identity_provider.py`, tested with real RSA crypto in `tests/unit/infrastructure/identity/` |
+| `ResolveSecurityContext` use case (tenant/org resolution, ambiguity handling) | IMPLEMENTED | `application/use_cases/resolve_security_context.py`, `tests/unit/application/use_cases/` |
+| HTTP middleware wiring `ResolveSecurityContext` into requests | MISSING | not started — see Known Gaps |
+| Membership persistence (real SurrealDB-backed repository) | MISSING | port defined, no adapter |
+| Policy Engine adapter | MISSING | port defined, no adapter |
+| Role → permission expansion | MISSING | `permissions_snapshot` is currently always empty |
+
+This matrix is maintained by hand as work lands — it is not
+auto-generated, so treat it as a claim to verify against the tests
+referenced, per Document 11's evidence requirement.
 
 ## Architecture
 
@@ -70,13 +84,31 @@ so any of these can be swapped without touching `domain/` or
 
 ## Known gaps (explicitly tracked, not silently assumed away)
 
-- No adapter yet implements `IdentityProvider` against real Keycloak.
-- No adapter yet implements `PolicyEngine`.
-- No SurrealDB repository adapters yet.
+- `KeycloakIdentityProvider` (`infrastructure/identity/`) is implemented
+  and tested against real signed JWTs, but is **not yet wired into the
+  HTTP layer**. There is deliberately no security-context-resolution
+  middleware yet, because its other required dependency —
+  `MembershipRepository` — has no real adapter. Wiring the use case
+  into HTTP now would mean shipping a middleware that either has no
+  real membership source (silently granting nothing usable) or is
+  backed by a stub, which would look like working security without
+  being backed by real infrastructure. That is exactly the "no false
+  certification" failure mode this project's audit skill exists to
+  prevent, so it stays unwired until `MembershipRepository` is real.
+- No adapter yet implements `PolicyEngine`. `ResolveSecurityContext`
+  currently leaves `permissions_snapshot` empty rather than fabricate
+  a role→permission mapping.
+- No SurrealDB repository adapters yet (including
+  `MembershipRepository`).
 - No event publisher (RabbitMQ) adapter yet.
 - `/health/ready` reports `not_wired` for all dependencies until the
   above adapters exist — this is intentional; do not fake a healthy
   readiness response before the checks are real.
+- CI workflow (`.github/workflows/ci.yml`) exists on disk but has not
+  been pushed to the remote — the token used for the initial push
+  lacked the `workflow` OAuth scope GitHub requires to accept workflow
+  files. Push it once a token with that scope is available, or add it
+  via the GitHub UI.
 
 ## Running locally
 
