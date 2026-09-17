@@ -1,0 +1,46 @@
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - surrealdb
+      - redis
+      - rabbitmq
+    volumes:
+      - ./src:/app/src:ro
+
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    command: start --user root --pass change-me-local-only file:/data/okapi.db
+    ports:
+      - "8001:8000"
+    volumes:
+      - surrealdb-data:/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: change-me-local-only
+    ports:
+      - "8080:8080"
+
+volumes:
+  surrealdb-data:
