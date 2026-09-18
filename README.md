@@ -21,6 +21,11 @@ Runtime, Document 3) in progress — security foundation slice landed:
 | Membership persistence (SurrealDB-backed repository) | UNVERIFIED | `infrastructure/persistence/surrealdb/`, query/mapping logic unit-tested against a fake connection; **not exercised against a live SurrealDB server** |
 | Policy Engine (`DefaultPolicyEngine`) | PARTIALLY_IMPLEMENTED | `infrastructure/policy/default_policy_engine.py` — returns real ALLOW/DENY decisions; REQUIRE_CONFIRMATION/APPROVAL/HUMAN outcomes not implemented (see Known Gaps) |
 | Role → permission expansion | MISSING | `permissions_snapshot` is currently always empty |
+| Channel domain (`ChannelSession`, `ChannelProvider`, `ChannelMessage`) | IMPLEMENTED | `domain/channel/`, `tests/unit/domain/channel/` |
+| Conversation domain (`Conversation`, `ConversationParticipant`, `ConversationContext`) | IMPLEMENTED | `domain/conversation/`, `tests/unit/domain/conversation/` |
+| Message domain (`Message` state machine) | IMPLEMENTED | `domain/messaging/`, `tests/unit/domain/messaging/` |
+| Request domain (`Request` state machine, `Intent`, `RequestConstraint`) | IMPLEMENTED | `domain/request/`, `tests/unit/domain/request/` |
+| Input Gateway pipeline (Section 15), Webhook Security (Section 16) | MISSING | not started |
 
 This matrix is maintained by hand as work lands — it is not
 auto-generated, so treat it as a claim to verify against the tests
