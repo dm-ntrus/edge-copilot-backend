@@ -25,6 +25,8 @@ Runtime, Document 3) in progress — security foundation slice landed:
 | Conversation domain (`Conversation`, `ConversationParticipant`, `ConversationContext`) | IMPLEMENTED | `domain/conversation/`, `tests/unit/domain/conversation/` |
 | Message domain (`Message` state machine) | IMPLEMENTED | `domain/messaging/`, `tests/unit/domain/messaging/` |
 | Request domain (`Request` state machine, `Intent`, `RequestConstraint`) | IMPLEMENTED | `domain/request/`, `tests/unit/domain/request/` |
+| HTTP error contract (Document 3 Section 73: code/category/request_id/correlation_id/retryable/details) | IMPLEMENTED | `interfaces/http/error_handlers.py`, `tests/unit/interfaces/http/test_error_handlers.py` |
+| SecurityContext HTTP dependency (`ResolveSecurityContext` wired into a FastAPI dependency) | IMPLEMENTED, not yet applied to any real route | `interfaces/http/dependencies/security_context.py`, tested end-to-end with real Keycloak crypto + fakes for membership/policy in `tests/unit/interfaces/http/dependencies/` — see Known Gaps for why it isn't applied to a route in `main.py` yet |
 | Input Gateway pipeline (Section 15), Webhook Security (Section 16) | MISSING | not started |
 
 This matrix is maintained by hand as work lands — it is not
@@ -89,16 +91,17 @@ so any of these can be swapped without touching `domain/` or
 
 ## Known gaps (explicitly tracked, not silently assumed away)
 
-- `KeycloakIdentityProvider` (`infrastructure/identity/`) is implemented
-  and tested against real signed JWTs, but is **not yet wired into the
-  HTTP layer**. Wiring it now would require a working end-to-end path
-  including `MembershipRepository`, which is UNVERIFIED (see next
-  point) — shipping HTTP-facing security backed by an unverified
-  persistence layer would look like working security without solid
-  ground underneath it. That is exactly the "no false certification"
-  failure mode this project's audit skill exists to prevent, so it
-  stays unwired until the SurrealDB adapter has been run against a real
-  server.
+- `build_security_context_dependency` (`interfaces/http/dependencies/`)
+  is implemented and tested end-to-end (real signed JWT through a real
+  `KeycloakIdentityProvider`, resolved into a `SecurityContext`,
+  including the regression test that an attacker-controlled
+  `X-Tenant-ID` header cannot grant a tenant the identity has no real
+  membership in). It is **not applied to any route in `main.py`**,
+  because doing so in this environment would require a real Keycloak
+  issuer and a `MembershipRepository` backed by a verified SurrealDB
+  connection — the latter is UNVERIFIED (see above). Wire it into a
+  route only once both of those are confirmed live in the target
+  deployment; the dependency itself needs no further work to do so.
 - `SurrealDbMembershipRepository` (`infrastructure/persistence/surrealdb/`)
   is implemented — parameterized queries, row mapping, malformed-row
   handling — and unit-tested against a **fake** connection object. It
