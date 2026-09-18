@@ -4,26 +4,25 @@ PolicyEngine port.
 Per SKILL — Authorization & Policy Engineering:
 CAPABILITY != PERMISSION != POLICY != AUTHORIZATION != RISK != AUTONOMY.
 
-This port represents the single point that turns
-(SecurityContext, action, resource, context) into an ALLOW/DENY decision.
-No other component — LLM, agent, MCP tool, workflow, scheduler — may
-substitute for it.
+Document 3 Section 40 defines the Policy Engine's contract precisely:
+
+    Input:  SecurityContext, Request, Capability, Resource, Risk, Agent, Plan
+    Output: ALLOW | DENY | REQUIRE_CONFIRMATION | REQUIRE_APPROVAL | REQUIRE_HUMAN
+
+This is intentionally richer than a bare allow/deny — no other
+component (LLM, agent, MCP tool, workflow, scheduler) may substitute
+for it, and callers must handle all five outcomes rather than treating
+"not DENY" as permission to proceed
+(`PolicyDecisionOutcome.permits_immediate_execution` exists precisely
+to make that mistake hard to write).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Protocol
 
+from okapi_copilot.domain.policy.decision import PolicyDecisionRecord
 from okapi_copilot.domain.security.security_context import SecurityContext
-
-
-@dataclass(frozen=True, slots=True)
-class AuthorizationDecision:
-    allowed: bool
-    policy_version: str
-    reason: str | None = None
-    risk_score: float | None = None
 
 
 class PolicyEngine(Protocol):
@@ -44,13 +43,18 @@ class PolicyEngine(Protocol):
         action: str,
         resource_type: str,
         resource_id: str | None,
+        resource_tenant_id: str,
+        resource_organization_id: str | None,
+        required_permission: str,
         attributes: dict[str, object] | None = None,
-    ) -> AuthorizationDecision:
+    ) -> PolicyDecisionRecord:
         """
-        Return an explicit ALLOW/DENY decision.
+        Return one of ALLOW / DENY / REQUIRE_CONFIRMATION /
+        REQUIRE_APPROVAL / REQUIRE_HUMAN.
 
-        Implementations MUST fail closed: any internal error, timeout, or
-        ambiguous state must resolve to `allowed=False`
-        (SKILL — Zero Trust, Section "FAIL CLOSED").
+        Implementations MUST fail closed (Document 3 Section 43: DENY BY
+        DEFAULT) — any internal error, timeout, unknown capability, or
+        ambiguous state must resolve to DENY, never to a permissive
+        outcome.
         """
         ...

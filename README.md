@@ -18,8 +18,8 @@ Runtime, Document 3) in progress — security foundation slice landed:
 | Keycloak token verification (signature/issuer/audience/expiry) | IMPLEMENTED | `infrastructure/identity/keycloak_identity_provider.py`, tested with real RSA crypto in `tests/unit/infrastructure/identity/` |
 | `ResolveSecurityContext` use case (tenant/org resolution, ambiguity handling) | IMPLEMENTED | `application/use_cases/resolve_security_context.py`, `tests/unit/application/use_cases/` |
 | HTTP middleware wiring `ResolveSecurityContext` into requests | MISSING | not started — see Known Gaps |
-| Membership persistence (real SurrealDB-backed repository) | MISSING | port defined, no adapter |
-| Policy Engine adapter | MISSING | port defined, no adapter |
+| Membership persistence (SurrealDB-backed repository) | UNVERIFIED | `infrastructure/persistence/surrealdb/`, query/mapping logic unit-tested against a fake connection; **not exercised against a live SurrealDB server** |
+| Policy Engine (`DefaultPolicyEngine`) | PARTIALLY_IMPLEMENTED | `infrastructure/policy/default_policy_engine.py` — returns real ALLOW/DENY decisions; REQUIRE_CONFIRMATION/APPROVAL/HUMAN outcomes not implemented (see Known Gaps) |
 | Role → permission expansion | MISSING | `permissions_snapshot` is currently always empty |
 
 This matrix is maintained by hand as work lands — it is not
@@ -86,29 +86,47 @@ so any of these can be swapped without touching `domain/` or
 
 - `KeycloakIdentityProvider` (`infrastructure/identity/`) is implemented
   and tested against real signed JWTs, but is **not yet wired into the
-  HTTP layer**. There is deliberately no security-context-resolution
-  middleware yet, because its other required dependency —
-  `MembershipRepository` — has no real adapter. Wiring the use case
-  into HTTP now would mean shipping a middleware that either has no
-  real membership source (silently granting nothing usable) or is
-  backed by a stub, which would look like working security without
-  being backed by real infrastructure. That is exactly the "no false
-  certification" failure mode this project's audit skill exists to
-  prevent, so it stays unwired until `MembershipRepository` is real.
-- No adapter yet implements `PolicyEngine`. `ResolveSecurityContext`
-  currently leaves `permissions_snapshot` empty rather than fabricate
-  a role→permission mapping.
-- No SurrealDB repository adapters yet (including
-  `MembershipRepository`).
+  HTTP layer**. Wiring it now would require a working end-to-end path
+  including `MembershipRepository`, which is UNVERIFIED (see next
+  point) — shipping HTTP-facing security backed by an unverified
+  persistence layer would look like working security without solid
+  ground underneath it. That is exactly the "no false certification"
+  failure mode this project's audit skill exists to prevent, so it
+  stays unwired until the SurrealDB adapter has been run against a real
+  server.
+- `SurrealDbMembershipRepository` (`infrastructure/persistence/surrealdb/`)
+  is implemented — parameterized queries, row mapping, malformed-row
+  handling — and unit-tested against a **fake** connection object. It
+  has **never been run against an actual SurrealDB server**: no
+  SurrealDB instance is reachable from the environment this code was
+  written in. Wire-protocol compatibility is UNVERIFIED. Before relying
+  on this in any environment, run it against `docker compose up
+  surrealdb` (or a real deployment) and add an integration test.
+- `DefaultPolicyEngine` (`infrastructure/policy/`) only ever returns
+  ALLOW or DENY. Document 3 Section 40 also specifies
+  REQUIRE_CONFIRMATION, REQUIRE_APPROVAL, and REQUIRE_HUMAN as policy
+  outcomes; producing those correctly needs the Risk Engine,
+  Confirmation Engine, Approval Engine, and Human Handoff policy, none
+  of which exist yet. Do not wire this engine in front of a critical
+  mutation until those exist — it is only correct today for operations
+  low-risk enough to never need confirmation/approval. It also does not
+  implement the "capability inconnue" / "policy inconnue" DENY BY
+  DEFAULT cases from Document 3 Section 43 — there is no Capability
+  Registry or versioned policy store yet.
+- No SurrealDB repository adapters exist yet for anything other than
+  `MembershipRepository`.
 - No event publisher (RabbitMQ) adapter yet.
 - `/health/ready` reports `not_wired` for all dependencies until the
-  above adapters exist — this is intentional; do not fake a healthy
-  readiness response before the checks are real.
+  above adapters are wired and verified — this is intentional; do not
+  fake a healthy readiness response before the checks are real.
 - CI workflow (`.github/workflows/ci.yml`) exists on disk but has not
   been pushed to the remote — the token used for the initial push
   lacked the `workflow` OAuth scope GitHub requires to accept workflow
   files. Push it once a token with that scope is available, or add it
-  via the GitHub UI.
+  via the GitHub UI. Note it currently only runs `mypy` on
+  `domain`+`application`; the whole of `src/` now passes `mypy --strict`
+  (verified locally), so the workflow's scope should be widened to
+  `src/okapi_copilot` when it is pushed.
 
 ## Running locally
 

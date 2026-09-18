@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from jose import jwt
@@ -145,6 +146,7 @@ class KeycloakIdentityProvider:
 
         response = await self._http_client.get(self._jwks_uri, timeout=5.0)
         response.raise_for_status()
-        keys = response.json().get("keys", [])
+        document: dict[str, Any] = response.json()
+        keys: list[dict[str, object]] = document.get("keys", [])
         self._jwks_cache = _CachedJwks(keys=keys, fetched_at=now)
         return keys
