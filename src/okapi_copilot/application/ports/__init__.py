@@ -8,20 +8,28 @@ adapters implement these protocols; the domain and application layers
 depend only on them, never on a concrete SDK.
 """
 
+from okapi_copilot.application.ports.channel_identity_repository import (
+    ChannelIdentityRepository,
+)
 from okapi_copilot.application.ports.clock import Clock
+from okapi_copilot.application.ports.conversation_repository import ConversationRepository
 from okapi_copilot.application.ports.event_publisher import EventPublisher
 from okapi_copilot.application.ports.id_generator import IdGenerator
 from okapi_copilot.application.ports.identity_provider import IdentityProvider
 from okapi_copilot.application.ports.membership_repository import MembershipRepository
 from okapi_copilot.application.ports.policy_engine import PolicyEngine
+from okapi_copilot.application.ports.replay_guard import ReplayGuard
 from okapi_copilot.application.ports.repository import Repository
 
 __all__ = [
+    "ChannelIdentityRepository",
     "Clock",
+    "ConversationRepository",
     "EventPublisher",
     "IdGenerator",
     "IdentityProvider",
     "MembershipRepository",
     "PolicyEngine",
+    "ReplayGuard",
     "Repository",
 ]

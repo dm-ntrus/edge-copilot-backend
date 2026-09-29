@@ -100,3 +100,19 @@ class NoValidMembershipError(AuthorizationError):
     membership at all — distinct from ambiguity (zero vs. multiple)."""
 
     code = "NO_VALID_MEMBERSHIP"
+
+
+class UnknownChannelIdentityError(DomainError):
+    """
+    Raised by the Input Gateway pipeline (Document 3 Section 15, the
+    "Identify" step) when an inbound channel message's sender cannot be
+    matched to a known `ChannelIdentity`.
+
+    Deliberately NOT an auto-provisioning trigger: Document 10 Section
+    5.1 states Copilot must not arbitrarily create a business identity.
+    Whatever onboards a genuinely new sender is a separate, explicit
+    flow — this error just stops the pipeline short of the LLM/agent
+    layer for a sender Copilot cannot yet identify.
+    """
+
+    code = "UNKNOWN_CHANNEL_IDENTITY"

@@ -27,7 +27,11 @@ Runtime, Document 3) in progress — security foundation slice landed:
 | Request domain (`Request` state machine, `Intent`, `RequestConstraint`) | IMPLEMENTED | `domain/request/`, `tests/unit/domain/request/` |
 | HTTP error contract (Document 3 Section 73: code/category/request_id/correlation_id/retryable/details) | IMPLEMENTED | `interfaces/http/error_handlers.py`, `tests/unit/interfaces/http/test_error_handlers.py` |
 | SecurityContext HTTP dependency (`ResolveSecurityContext` wired into a FastAPI dependency) | IMPLEMENTED, not yet applied to any real route | `interfaces/http/dependencies/security_context.py`, tested end-to-end with real Keycloak crypto + fakes for membership/policy in `tests/unit/interfaces/http/dependencies/` — see Known Gaps for why it isn't applied to a route in `main.py` yet |
-| Input Gateway pipeline (Section 15), Webhook Security (Section 16) | MISSING | not started |
+| Input Gateway pipeline (Section 15), Webhook Security (Section 16) | PARTIALLY_IMPLEMENTED | see rows below |
+| Webhook signature/timestamp/payload-size validation | IMPLEMENTED | `domain/gateway/`, `tests/unit/domain/gateway/` |
+| Replay protection (`ReplayGuard` + `VerifyWebhook` use case) | IMPLEMENTED; Redis adapter UNVERIFIED against a live server | `application/use_cases/verify_webhook.py`, `infrastructure/persistence/redis/`, `tests/unit/application/use_cases/test_verify_webhook.py` |
+| `ProcessInboundMessage` (full Input Gateway pipeline orchestration) | IMPLEMENTED, tested with fakes | `application/use_cases/process_inbound_message.py`, `tests/unit/application/use_cases/test_process_inbound_message.py` — no `ChannelIdentityRepository` / `ConversationRepository` adapters exist yet (ports only), and it is not wired to any HTTP route |
+| Provider validation, rate limiting (remaining Section 16 items) | MISSING | no `ChannelProvider` repository or rate-limit counter store yet |
 
 This matrix is maintained by hand as work lands — it is not
 auto-generated, so treat it as a claim to verify against the tests
@@ -123,6 +127,18 @@ so any of these can be swapped without touching `domain/` or
   Registry or versioned policy store yet.
 - No SurrealDB repository adapters exist yet for anything other than
   `MembershipRepository`.
+- `RedisReplayGuard` (`infrastructure/persistence/redis/`) — same
+  honesty note as SurrealDB: implemented against Redis's real `SET NX
+  EX` semantics, unit-tested against a fake client, but never run
+  against an actual Redis server in this environment. UNVERIFIED, not
+  IMPLEMENTED, until run against `docker compose up redis`.
+- `ProcessInboundMessage` (the Section 15 Input Gateway pipeline) has no
+  real `ChannelIdentityRepository` or `ConversationRepository` adapter
+  yet — only the ports and the fully-tested orchestration logic exist.
+  It also does not implement the "Provider validation" or "Rate
+  limiting" items from Section 16 — those need a `ChannelProvider`
+  repository and a separate rate-limit counter store, neither of which
+  exist yet. It is not wired to any webhook HTTP route.
 - No event publisher (RabbitMQ) adapter yet.
 - `/health/ready` reports `not_wired` for all dependencies until the
   above adapters are wired and verified — this is intentional; do not
